@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendButton = document.getElementById('send-button');
     const fileTransferSection = document.getElementById('file-transfer-section');
     const status = document.getElementById('status');
+    const fileList = document.getElementById('file-list');
+    const progressBar = document.getElementById('progress-bar');
+    const progress = document.getElementById('progress');
 
     let conn;
 
@@ -41,44 +44,112 @@ document.addEventListener('DOMContentLoaded', () => {
         sendButton.addEventListener('click', () => {
             const file = fileInput.files[0];
             if (file && conn.open) {
+                const chunkSize = 1024 * 1024; // 1MB chunks
+                let offset = 0;
+        
                 const reader = new FileReader();
-                reader.onload = (event) => {
-                    const data = {
+        
+                reader.onload = async (event) => {
+                    conn.send({
                         fileName: file.name,
-                        fileData: event.target.result
-                    };
-                    conn.send(data);
-                    status.textContent = 'File sent: ' + file.name;
+                        fileData: event.target.result,
+                        fileSize: file.size,
+                        isLastChunk: (offset + chunkSize >= file.size)
+                    });
+        
+                    offset += chunkSize;
+        
+                    // Update the progress bar
+                    const percent = Math.min((offset / file.size) * 100, 100);
+                    progress.style.width = percent + '%';
+        
+                    if (offset < file.size) {
+                        await new Promise(resolve => setTimeout(resolve, 10)); // Pausa de 10ms entre envios
+                        readSlice(offset);
+                    } else {
+                        status.textContent = 'File sent: ' + file.name;
+                        setTimeout(() => {
+                            progressBar.classList.add('hidden'); // Esconde a barra após a conclusão
+                        }, 500);
+                    }
                 };
-                reader.readAsArrayBuffer(file);
+        
+                const readSlice = (o) => {
+                    const slice = file.slice(o, o + chunkSize);
+                    reader.readAsArrayBuffer(slice);
+                };
+        
+                progressBar.classList.remove('hidden'); // Mostra a barra de progresso
+                progress.style.width = '0%';
+                readSlice(0);
             } else {
                 status.textContent = 'No file selected or not connected';
             }
-        });
+        });        
 
-        // Handle receiving files
+        // Handle receiving chunks and assembling them
+        let incomingFileData = [];
+        let incomingFileName = '';
+        let incomingFileSize = 0;
+        let receivedSize = 0;
+
         conn.on('data', (data) => {
             if (data.fileName && data.fileData) {
-                // Create a Blob from the received ArrayBuffer
-                const blob = new Blob([data.fileData]);
+                if (receivedSize === 0) {
+                    incomingFileName = data.fileName;
+                    incomingFileSize = data.fileSize;
+                    
+                    // Mostra a barra de progresso
+                    progressBar.classList.remove('hidden');
+                    progress.style.width = '0%';
+                    progress.style.height = '100%'; // Garantir que a altura esteja correta
+                    
+                }
 
-                // Create a URL for the Blob
-                const url = URL.createObjectURL(blob);
+                receivedSize += data.fileData.byteLength;
+                incomingFileData.push(data.fileData);
 
-                // Create a link element and trigger a download
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = data.fileName;
-                document.body.appendChild(a);
-                a.click();
+                // Update the progress bar
+                const percent = Math.min((receivedSize / incomingFileSize) * 100, 100);
+                progress.style.width = percent + '%';
 
-                // Clean up by removing the link element
-                document.body.removeChild(a);
+                if (data.isLastChunk) {
+                    // Create a Blob from the received chunks
+                    const blob = new Blob(incomingFileData);
 
-                // Release the object URL
-                URL.revokeObjectURL(url);
+                    // Create a URL for the Blob
+                    const url = URL.createObjectURL(blob);
 
-                status.textContent = 'File received: ' + data.fileName;
+                    // Create a list item with a download button
+                    const li = document.createElement('li');
+                    const span = document.createElement('span');
+                    span.textContent = incomingFileName;
+                    span.className = 'mr-2';
+                    const button = document.createElement('button');
+                    button.className = 'btn btn-accent';
+                    button.textContent = 'Download';
+                    button.onclick = () => {
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = incomingFileName;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                    };
+                    li.appendChild(span);
+                    li.appendChild(button);
+                    fileList.appendChild(li);
+
+                    status.textContent = 'File received: ' + incomingFileName;
+                    setTimeout(() => {
+                        progressBar.classList.add('hidden'); // Esconde a barra após a conclusão
+                    }, 500);
+
+                    // Reset for the next file
+                    incomingFileData = [];
+                    receivedSize = 0;
+                }
             }
         });
     }

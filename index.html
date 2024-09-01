@@ -29,9 +29,16 @@
             <label for="file-input" class="block text-sm font-medium">Select a file to send</label>
             <input id="file-input" type="file" class="file-input file-input-bordered w-full max-w-xs mb-4" />
 
-            <button id="send-button" class="btn btn-secondary">Send File</button>
+            <button id="send-button" class="btn btn-secondary mb-4">Send File</button>
 
             <div id="status" class="mt-4 text-sm"></div>
+
+            <div id="progress-bar" class="progress-bar hidden">
+                <div id="progress" class="progress"></div>
+            </div>
+
+            <h2 class="text-2xl font-semibold mt-6">Received Files</h2>
+            <ul id="file-list" class="list-none mt-2"></ul>
         </div>
     </div>
 </body>

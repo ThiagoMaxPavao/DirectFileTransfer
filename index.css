@@ -1,8 +1,20 @@
-/* Custom styles for the dark theme */
-body {
-    font-family: 'Inter', sans-serif;
+/* index.css */
+.hidden {
+    display: none;
 }
 
-input, button {
-    color: black;
+.progress-bar {
+    width: 100%;
+    background-color: #2d2d2d; /* Cor de fundo da barra de progresso */
+    height: 20px; /* Altura da barra de progresso */
+    border-radius: 5px; /* Bordas arredondadas */
+    margin-top: 10px; /* Margem superior */
+}
+
+.progress {
+    background-color: #3b82f6; /* Cor da barra de progresso */
+    height: 100%; /* Altura completa da barra */
+    width: 0%; /* Inicializa em 0% */
+    border-radius: 5px; /* Bordas arredondadas */
+    transition: width 0.4s ease; /* Transição suave ao atualizar o progresso */
 }
