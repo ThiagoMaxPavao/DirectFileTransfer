@@ -1,0 +1,8 @@
+/* Custom styles for the dark theme */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+input, button {
+    color: black;
+}
